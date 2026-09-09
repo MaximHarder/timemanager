@@ -1,6 +1,7 @@
 version: 2
-# Automerge für patch/minor übernimmt .github/workflows/dependabot-ci-automerge.yml
-# (Majors bleiben manuell). In den Repo-Einstellungen „Allow auto-merge“ aktivieren.
+# Merge-Reihenfolge: .github/workflows/dependabot-queue.yml (ein PR nach dem anderen, auch Majors).
+# CI: .github/workflows/dependabot-ci-automerge.yml bei package.json- / Workflow-Änderungen.
+# Optional: Secret QUEUE_GITHUB_TOKEN (PAT) falls CODEOWNERS/Rulesets den Merge blockieren.
 updates:
   # npm Dependencies überwachen
   - package-ecosystem: 'npm'
@@ -23,16 +24,6 @@ updates:
       - 'dependencies'
       - 'security'
       - 'automated'
-    ignore:
-      # Ignoriere Major Updates für kritische Dependencies
-      - dependency-name: 'vue'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'vue-router'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'vue-i18n'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'typescript'
-        update-types: ['version-update:semver-major']
 
   # GitHub Actions überwachen
   - package-ecosystem: 'github-actions'

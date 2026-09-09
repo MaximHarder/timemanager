@@ -5,21 +5,16 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'package.json'
-      - 'package-lock.json'
+      - '.github/workflows/**'
   push:
     branches: [main]
     paths:
       - 'package.json'
-      - 'package-lock.json'
-
-# Gemeinsame Gruppe mit deploy-ftp: Deploy wartet, solange CI/Dependabot laufen
-concurrency:
-  group: dependabot-updates-gate
-  cancel-in-progress: false
+      - '.github/workflows/**'
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  pull-requests: read
 
 jobs:
   ci:
@@ -36,31 +31,10 @@ jobs:
 
       - name: Install dependencies
         # package-lock.json ist gitignored; npm ci braucht eine committed Lockfile
-        run: npm install
+        run: npm install || npm install --legacy-peer-deps
 
       - name: Run tests
         run: CI=true npm test -- --watchAll=false
 
       - name: Build
         run: npm run build
-
-  automerge:
-    name: Dependabot Automerge
-    runs-on: ubuntu-latest
-    needs: ci
-    if: github.actor == 'dependabot[bot]'
-    steps:
-      - name: Fetch Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@v2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Enable auto-merge for patch/minor
-        if: >
-          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
-          steps.metadata.outputs.update-type == 'version-update:semver-minor'
-        run: gh pr merge --auto --squash "$PR_URL"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}

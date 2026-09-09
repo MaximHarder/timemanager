@@ -1,5 +1,6 @@
 name: Deploy to FTP
 
+# Nach Dependabot-Merges deployen wir bewusst (warten auf die Queue), statt zu skippen.
 on:
   push:
     branches: [main]
@@ -19,85 +20,14 @@ permissions:
   actions: read
 
 jobs:
-  check-dependabot:
-    name: Check if Dependabot
-    runs-on: ubuntu-latest
-    outputs:
-      is-dependabot: ${{ steps.check.outputs.is-dependabot }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 10
-
-      - name: Check if triggered by Dependabot
-        id: check
-        run: |
-          # Bei manuellem Start (workflow_dispatch) immer erlauben
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "is-dependabot=false" >> $GITHUB_OUTPUT
-            echo "Manual workflow dispatch - allowing deployment"
-            exit 0
-          fi
-
-          ACTOR="${{ github.actor }}"
-          COMMIT_AUTHOR="${{ github.event.head_commit.author.name }}"
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          REF="${{ github.ref }}"
-
-          # Prüfe ob es ein Release-Branch ist (releases/v*)
-          if [[ "$REF" =~ ^refs/heads/releases/v ]] || [[ "$REF" =~ ^refs/remotes/origin/releases/v ]]; then
-            echo "is-dependabot=false" >> $GITHUB_OUTPUT
-            echo "Release branch detected - allowing deployment"
-            exit 0
-          fi
-
-          # Prüfe nur den aktuellen Commit, nicht die Historie
-          # Prüfe auf Dependabot-Actor oder Commit-Autor
-          # Nur prüfen wenn es wirklich Dependabot ist, nicht nur wegen Commit-Message
-          if [ "$ACTOR" = "dependabot[bot]" ]; then
-            echo "is-dependabot=true" >> $GITHUB_OUTPUT
-            echo "Skipping deployment - triggered by Dependabot"
-            echo "Actor: $ACTOR"
-            exit 0
-          fi
-
-          # Prüfe Commit-Autor nur wenn es wirklich Dependabot ist
-          if echo "$COMMIT_AUTHOR" | grep -qi "^dependabot\[bot\]$"; then
-            echo "is-dependabot=true" >> $GITHUB_OUTPUT
-            echo "Skipping deployment - commit author is Dependabot"
-            echo "Commit Author: $COMMIT_AUTHOR"
-            exit 0
-          fi
-
-          # Prüfe nur ob der aktuelle Commit direkt von Dependabot stammt
-          # Prüfe nur auf explizite Dependabot-Referenzen im aktuellen Commit
-          if echo "$COMMIT_MSG" | grep -qiE "^Merge.*dependabot/|^Bump.*from.*dependabot/|dependabot\[bot\]"; then
-            echo "is-dependabot=true" >> $GITHUB_OUTPUT
-            echo "Skipping deployment - commit message indicates Dependabot"
-            echo "Commit Message: $COMMIT_MSG"
-            exit 0
-          fi
-
-          # Kein Dependabot erkannt
-          echo "is-dependabot=false" >> $GITHUB_OUTPUT
-          echo "Not triggered by Dependabot, proceeding with deployment"
-          echo "Actor: $ACTOR"
-          echo "Commit Author: $COMMIT_AUTHOR"
-          echo "Ref: $REF"
-
   deploy:
     name: Build and Deploy
-    needs: check-dependabot
-    if: needs.check-dependabot.outputs.is-dependabot == 'false'
     runs-on: ubuntu-latest
     environment: FTP
-    # Wartet, bis Dependabot CI/Automerge die Gruppe freigibt
-    concurrency:
-      group: dependabot-updates-gate
-      cancel-in-progress: false
 
     steps:
+      # Warte auf Security-Audit / Dependabot-CI / Merge-Queue — nicht skippen bei Dependabot-Merges.
+      # Keine gemeinsame Job-Concurrency mit CI (kein dependabot-updates-gate).
       - name: Auf Security Audit und Dependabot warten
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -140,7 +70,8 @@ jobs:
           }
 
           wait_open_runs "security-audit.yml" "$SHA" "Security Audit"
-          wait_open_runs "dependabot-ci-automerge.yml" "" "Dependabot CI/Automerge"
+          wait_open_runs "dependabot-ci-automerge.yml" "" "Dependabot CI"
+          wait_open_runs "dependabot-queue.yml" "" "Dependabot Merge Queue"
           echo "Alle Gates frei — Deploy fortsetzen"
 
       - name: Checkout code

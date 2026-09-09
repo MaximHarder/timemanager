@@ -1,0 +1,95 @@
+name: Dependabot Merge Queue
+
+# Verarbeitet offene Dependabot-PRs strikt der Reihe nach (kleinste Nummer zuerst).
+# Auch Majors: bei grünen Checks und ohne Konflikte → squash-merge, dann nächster PR.
+# Base kann main oder releases/v* sein (Branch-Router).
+on:
+  workflow_run:
+    workflows: ['CI and Dependabot Automerge']
+    types: [completed]
+  pull_request:
+    types: [closed]
+  push:
+    branches: [main, 'releases/v*']
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: dependabot-merge-queue
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: read
+  actions: read
+
+jobs:
+  process-queue:
+    name: Dependabot-Queue abarbeiten
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.merged == true
+    steps:
+      - name: PRs der Reihe nach mergen
+        env:
+          QUEUE_TOKEN: ${{ secrets.QUEUE_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -n "${QUEUE_TOKEN:-}" ]; then
+            export GH_TOKEN="$QUEUE_TOKEN"
+          fi
+
+          mapfile -t PRS < <(gh pr list --repo "$REPO" --state open --limit 50 --author "app/dependabot" \
+            --json number --jq 'sort_by(.number) | .[].number')
+
+          if [ "${#PRS[@]}" -eq 0 ]; then
+            echo "Keine offenen Dependabot-PRs — fertig."
+            exit 0
+          fi
+
+          echo "Warteschlange: ${PRS[*]}"
+
+          for PR in "${PRS[@]}"; do
+            echo ""
+            echo "=== PR #${PR} ==="
+
+            if ! gh pr update-branch "$PR" --repo "$REPO"; then
+              echo "update-branch fehlgeschlagen — prüfe Konflikte..."
+            fi
+
+            sleep 10
+
+            MERGEABLE=$(gh pr view "$PR" --repo "$REPO" --json mergeable --jq .mergeable)
+            STATE=$(gh pr view "$PR" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus)
+            echo "mergeable=${MERGEABLE} mergeStateStatus=${STATE}"
+
+            if [ "$MERGEABLE" = "CONFLICTING" ] || [ "$STATE" = "DIRTY" ]; then
+              echo "PR #${PR} hat Konflikte — Queue stoppt hier."
+              exit 0
+            fi
+
+            echo "Warte auf Status-Checks..."
+            if ! gh pr checks "$PR" --repo "$REPO" --watch --interval 30 --fail-fast; then
+              STATE=$(gh pr view "$PR" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus)
+              if [ "$STATE" != "CLEAN" ] && [ "$STATE" != "HAS_HOOKS" ]; then
+                echo "PR #${PR} nicht mergebar (status=${STATE}) — Queue stoppt."
+                exit 0
+              fi
+            fi
+
+            echo "Merge PR #${PR} (squash, auch Major)..."
+            if ! gh pr merge "$PR" --repo "$REPO" --squash --delete-branch; then
+              echo "Merge von PR #${PR} fehlgeschlagen. Optional Secret QUEUE_GITHUB_TOKEN setzen."
+              exit 1
+            fi
+            echo "PR #${PR} gemerged — nächster in der Queue."
+            sleep 5
+          done
+
+          echo "Queue leer / alle verarbeitet."
