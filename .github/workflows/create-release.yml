@@ -540,7 +540,7 @@ jobs:
       contents: write
     steps:
       - name: Download ZIP archive
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: release-zip
           path: .
