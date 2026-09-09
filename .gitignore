@@ -26,3 +26,4 @@ specs/
 .specify/
 .cursor/
 dist/
+package-lock.json
