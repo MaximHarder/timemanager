@@ -24,6 +24,7 @@ jobs:
         id: latest-version
         run: |
           chmod +x .github/scripts/get-latest-version.sh
+          # Basis = letzte veröffentlichte Version (Tag/package.json), nicht releases/v*
           LATEST_VERSION=$(.github/scripts/get-latest-version.sh)
           echo "latest-version=${LATEST_VERSION}" >> $GITHUB_OUTPUT
           echo "Latest version: ${LATEST_VERSION}"
@@ -32,6 +33,7 @@ jobs:
         id: next-version
         run: |
           chmod +x .github/scripts/get-next-version.sh
+          # Immer dieselbe nächste Staging-Version (z. B. 0.2.7), bis sie getaggt ist
           NEXT_VERSION=$(.github/scripts/get-next-version.sh "${{ steps.latest-version.outputs.latest-version }}")
           echo "next-version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
           echo "Next version: ${NEXT_VERSION}"

@@ -88,6 +88,10 @@ jobs:
     if: needs.check-dependabot.outputs.is-dependabot == 'false'
     runs-on: ubuntu-latest
     environment: FTP
+    # Wartet, bis Dependabot CI/Automerge die Gruppe freigibt
+    concurrency:
+      group: dependabot-updates-gate
+      cancel-in-progress: false
 
     steps:
       - name: Checkout code

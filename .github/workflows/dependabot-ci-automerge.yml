@@ -4,6 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# Gemeinsame Gruppe mit deploy-ftp: Deploy wartet, solange Dependabot-Updates laufen
+concurrency:
+  group: dependabot-updates-gate
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
