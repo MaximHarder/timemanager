@@ -72,7 +72,7 @@ jobs:
           set -e
 
           if [ "$EXTRACT_STATUS" -ne 0 ] || [ -z "$CHANGELOG_ENTRY" ]; then
-            echo "Warning: No changelog entry found for version $VERSION"
+            echo "Warnung: Kein Changelog-Eintrag für Version $VERSION gefunden"
             CHANGELOG_ENTRY="_(Kein Changelog-Eintrag für v${VERSION} gefunden.)_"
           fi
 

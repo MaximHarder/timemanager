@@ -46,7 +46,7 @@ else
     LATEST_VERSION="dev"
 fi
 
-# Normalize whitespace and remove any suffixes (e.g., "0.2.6-beta" -> "0.2.6")
+# Whitespace normalisieren und Suffixe entfernen (z. B. "0.2.6-beta" -> "0.2.6")
 LATEST_VERSION=$(echo "$LATEST_VERSION" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | sed 's/-.*$//' | sed 's/\+.*$//' | sed 's/_.*$//')
 
 # Output based on format
