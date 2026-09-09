@@ -24,6 +24,11 @@ updates:
       - 'dependencies'
       - 'security'
       - 'automated'
+    # TypeScript 7 (native/Go) bricht react-scripts: resolve.sync('typescript') + readConfigFile.
+    # Major erst nach Wechsel weg von react-scripts (z. B. Vitest).
+    ignore:
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
 
   # GitHub Actions überwachen
   - package-ecosystem: 'github-actions'
