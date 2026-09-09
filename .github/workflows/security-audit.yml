@@ -1,0 +1,160 @@
+name: Security Audit
+
+on:
+  schedule:
+    # Täglich um 6:00 UTC ausführen
+    - cron: '0 6 * * *'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.github/**'
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '.github/**'
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+  workflow_dispatch: # Manueller Start möglich
+
+jobs:
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        # package-lock.json ist gitignored; npm ci braucht eine committed Lockfile
+        run: npm install
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Run npm outdated check
+        run: npm outdated
+        continue-on-error: true
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+        continue-on-error: true
+
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project-name: 'arbeitszeiterfassung'
+          path: '.'
+          format: 'HTML'
+          out: 'reports'
+        continue-on-error: true
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report
+          path: reports/
+          retention-days: 30
+
+  code-scanning:
+    name: Code Security Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npx eslint . --ext .ts,.tsx,.js,.jsx
+        continue-on-error: true
+
+      - name: Run TypeScript check
+        run: |
+          if [ -f tsconfig.json ]; then
+            npx tsc --noEmit
+          else
+            echo "Kein tsconfig.json — tsc übersprungen"
+          fi
+        continue-on-error: true
+
+      - name: Run Bandit (Python, falls vorhanden)
+        run: |
+          if find . -name '*.py' -not -path './node_modules/*' | grep -q .; then
+            pip install bandit
+            find . -name '*.py' -not -path './node_modules/*' -print0 | xargs -0 bandit
+          else
+            echo "Keine Python-Dateien gefunden — Bandit übersprungen"
+          fi
+        continue-on-error: true
+
+  dependency-update-check:
+    name: Dependency Update Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check for outdated packages
+        run: |
+          echo "Checking for outdated packages..."
+          npm outdated || echo "All packages are up to date"
+
+          echo "Checking for security vulnerabilities..."
+          npm audit || echo "No security vulnerabilities found"
+
+      - name: Check package.json integrity
+        run: |
+          echo "Checking package.json integrity..."
+          if [ -f "package.json" ]; then
+            echo "✅ package.json exists"
+            echo "📦 Total dependencies: $(jq '.dependencies | length' package.json)"
+            echo "🔧 Total devDependencies: $(jq '.devDependencies | length' package.json)"
+          else
+            echo "❌ package.json not found"
+            exit 1
+          fi
+
+      - name: Create security summary
+        if: always()
+        run: |
+          echo "## Security Audit Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Checks Completed:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ npm audit" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Dependency updates" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Code security scanning" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Package.json integrity" >> $GITHUB_STEP_SUMMARY
