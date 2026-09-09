@@ -10,9 +10,9 @@ updates:
       timezone: 'Europe/Berlin'
     open-pull-requests-limit: 5
     reviewers:
-      - 'Gokujo'
+      - 'MaximHarder'
     assignees:
-      - 'Gokujo'
+      - 'MaximHarder'
     commit-message:
       prefix: 'chore'
       prefix-development: 'chore'
@@ -42,9 +42,9 @@ updates:
       timezone: 'Europe/Berlin'
     open-pull-requests-limit: 3
     reviewers:
-      - 'Gokujo'
+      - 'MaximHarder'
     assignees:
-      - 'Gokujo'
+      - 'MaximHarder'
     commit-message:
       prefix: 'ci'
       include: 'scope'
