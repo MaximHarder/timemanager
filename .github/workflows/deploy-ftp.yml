@@ -14,6 +14,10 @@ concurrency:
   group: deploy-ftp
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   check-dependabot:
     name: Check if Dependabot
@@ -94,6 +98,51 @@ jobs:
       cancel-in-progress: false
 
     steps:
+      - name: Auf Security Audit und Dependabot warten
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TIMEOUT=3600
+          INTERVAL=30
+          elapsed=0
+
+          echo "Kurz warten, damit parallele Workflows starten können..."
+          sleep 20
+
+          wait_open_runs() {
+            local workflow="$1"
+            local filter_sha="${2:-}"
+            local desc="$3"
+            while true; do
+              local jq_filter
+              if [ -n "$filter_sha" ]; then
+                jq_filter="[.[] | select(.headSha == \"${filter_sha}\") | select(.status == \"queued\" or .status == \"in_progress\" or .status == \"pending\" or .status == \"waiting\")] | length"
+              else
+                jq_filter='[.[] | select(.status == "queued" or .status == "in_progress" or .status == "pending" or .status == "waiting")] | length'
+              fi
+              local count
+              count=$(gh run list --repo "$REPO" --workflow "$workflow" --limit 20 --json databaseId,status,headSha --jq "$jq_filter")
+              if [ "$count" = "0" ]; then
+                echo "${desc}: keine offenen Runs"
+                break
+              fi
+              if [ "$elapsed" -ge "$TIMEOUT" ]; then
+                echo "Timeout beim Warten auf ${desc}"
+                exit 1
+              fi
+              echo "${desc}: ${count} offene Run(s) — warte ${INTERVAL}s..."
+              sleep "$INTERVAL"
+              elapsed=$((elapsed + INTERVAL))
+            done
+          }
+
+          wait_open_runs "security-audit.yml" "$SHA" "Security Audit"
+          wait_open_runs "dependabot-ci-automerge.yml" "" "Dependabot CI/Automerge"
+          echo "Alle Gates frei — Deploy fortsetzen"
+
       - name: Checkout code
         uses: actions/checkout@v6
 

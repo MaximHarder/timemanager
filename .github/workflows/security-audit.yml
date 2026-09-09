@@ -6,18 +6,27 @@ on:
     - cron: '0 6 * * *'
   push:
     branches: [main]
-    paths-ignore:
-      - '.github/**'
-      - 'README.md'
-      - 'LICENSE'
-      - '.gitignore'
+    paths:
+      # Bei Dependency-Änderungen immer prüfen
+      - 'package.json'
+      - 'src/**'
+      - 'public/**'
+      - 'tests/**'
+      - 'index.html'
+      - 'vite.config.*'
+      - 'tsconfig*.json'
+      - 'tailwind.config.*'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '.github/**'
-      - 'README.md'
-      - 'LICENSE'
-      - '.gitignore'
+    paths:
+      - 'package.json'
+      - 'src/**'
+      - 'public/**'
+      - 'tests/**'
+      - 'index.html'
+      - 'vite.config.*'
+      - 'tsconfig*.json'
+      - 'tailwind.config.*'
   workflow_dispatch: # Manueller Start möglich
 
 jobs:
@@ -36,7 +45,7 @@ jobs:
 
       - name: Install dependencies
         # package-lock.json ist gitignored; npm ci braucht eine committed Lockfile
-        run: npm install
+        run: npm install || npm install --legacy-peer-deps
 
       - name: Run npm audit
         run: npm audit --audit-level=moderate
@@ -46,12 +55,16 @@ jobs:
         run: npm outdated
         continue-on-error: true
 
+      # snyk/actions/node führt intern npm ci aus (bricht ohne Lockfile / bei Peer-Konflikten).
+      # Setup-Action nutzt die bereits installierten node_modules.
+      - name: Setup Snyk CLI
+        uses: snyk/actions/setup@master
+        continue-on-error: true
+
       - name: Run Snyk security scan
-        uses: snyk/actions/node@master
+        run: snyk test --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high
         continue-on-error: true
 
       - name: Run OWASP Dependency Check
@@ -85,7 +98,7 @@ jobs:
           node-version: '24'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install || npm install --legacy-peer-deps
 
       - name: Run ESLint
         run: npx eslint . --ext .ts,.tsx,.js,.jsx
@@ -124,7 +137,7 @@ jobs:
           node-version: '24'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install || npm install --legacy-peer-deps
 
       - name: Check for outdated packages
         run: |
