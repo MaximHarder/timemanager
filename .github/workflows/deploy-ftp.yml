@@ -100,7 +100,8 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        # package-lock.json is gitignored; npm ci needs a committed lockfile
+        run: npm install
 
       - name: Build application
         run: npm run build
@@ -115,14 +116,17 @@ jobs:
           echo "Deploying version: ${DEPLOY_VERSION}"
 
       - name: Deploy to FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        # v4.4.0 runs on Node 24 (avoids Node 20 deprecation).
+        # Avoid dangerous-clean-slate: after a full wipe, many FTP hosts return
+        # 550 when the action creates assets/ then immediately CWD into it.
+        # Incremental sync removes stale Vite hashed assets via sync state.
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: /
-          dangerous-clean-slate: true
+          server-dir: ./
           exclude: |
             **/.well-known/**
 

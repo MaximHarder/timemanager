@@ -501,7 +501,8 @@ jobs:
           echo "✅ Version verified: ${PACKAGE_VERSION}"
 
       - name: Install dependencies
-        run: npm ci
+        # package-lock.json is gitignored; npm ci needs a committed lockfile
+        run: npm install
 
       - name: Build application
         id: build
