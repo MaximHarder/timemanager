@@ -2,10 +2,10 @@
 # Diese Datei definiert, wer für verschiedene Bereiche des Codes verantwortlich ist
 
 # Alle Dateien im Repository
-* @Gokujo
+* @MaximHarder
 
 # Spezifische Bereiche (optional, für bessere Organisation)
-/src/ @Gokujo
-/public/ @Gokujo
-/test/ @Gokujo
-/.github/ @Gokujo
+/src/ @MaximHarder
+/public/ @MaximHarder
+/test/ @MaximHarder
+/.github/ @MaximHarder
