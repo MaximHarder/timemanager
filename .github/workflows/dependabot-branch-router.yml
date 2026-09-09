@@ -67,7 +67,7 @@ jobs:
           echo "Created branch: $TARGET_BRANCH from $BASE_BRANCH"
 
       - name: Update PR base branch
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
