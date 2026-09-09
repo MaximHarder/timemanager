@@ -19,7 +19,7 @@ git fetch origin --prune 2>/dev/null || true
 # Try to get from release branches first (releases/v*)
 LATEST_BRANCH_VERSION=$(git branch -r 2>/dev/null | \
     grep -E "origin/releases/v[0-9]+\.[0-9]+\.[0-9]+" | \
-    sed 's|origin/releases/v||' | \
+    sed 's|^[[:space:]]*origin/releases/v||' | \
     sort -V | \
     tail -1)
 
@@ -46,8 +46,8 @@ else
     LATEST_VERSION="dev"
 fi
 
-# Remove any suffixes (e.g., "0.2.6-beta" -> "0.2.6")
-LATEST_VERSION=$(echo "$LATEST_VERSION" | sed 's/-.*$//' | sed 's/\+.*$//' | sed 's/_.*$//')
+# Normalize whitespace and remove any suffixes (e.g., "0.2.6-beta" -> "0.2.6")
+LATEST_VERSION=$(echo "$LATEST_VERSION" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | sed 's/-.*$//' | sed 's/\+.*$//' | sed 's/_.*$//')
 
 # Output based on format
 if [ "$FORMAT" = "full" ]; then
