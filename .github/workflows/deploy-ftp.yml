@@ -96,11 +96,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
-        # package-lock.json is gitignored; npm ci needs a committed lockfile
         run: npm install
 
       - name: Build application
@@ -116,10 +115,7 @@ jobs:
           echo "Deploying version: ${DEPLOY_VERSION}"
 
       - name: Deploy to FTP
-        # v4.4.0 runs on Node 24 (avoids Node 20 deprecation).
-        # Avoid dangerous-clean-slate: after a full wipe, many FTP hosts return
-        # 550 when the action creates assets/ then immediately CWD into it.
-        # Incremental sync removes stale Vite hashed assets via sync state.
+
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
