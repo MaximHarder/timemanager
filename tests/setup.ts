@@ -1,5 +1,8 @@
 // Jest setup file for testing configuration
 import '@testing-library/jest-dom';
+import { TextDecoder, TextEncoder } from 'util';
+
+Object.assign(globalThis, { TextDecoder, TextEncoder });
 
 // Mock localStorage for testing
 const localStorageMock = {

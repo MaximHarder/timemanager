@@ -10,10 +10,13 @@ module.exports = {
     '<rootDir>/tests/**/*.test.{ts,tsx}'
   ],
   
-  // Module name mapping for absolute imports
-  moduleNameMapping: {
+  // Module name mapping for absolute imports + Jest↔react-router v7 exports
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^@tests/(.*)$': '<rootDir>/tests/$1'
+    '^@tests/(.*)$': '<rootDir>/tests/$1',
+    '^react-router/dom$': '<rootDir>/node_modules/react-router/dist/development/dom-export.js',
+    '^react-router$': '<rootDir>/node_modules/react-router/dist/development/index.js',
+    '^react-router-dom$': '<rootDir>/node_modules/react-router-dom/dist/index.js'
   },
   
   // Coverage configuration
