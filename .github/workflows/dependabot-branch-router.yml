@@ -3,7 +3,6 @@ name: Dependabot Branch Router
 on:
   pull_request:
     types: [opened, synchronize]
-  workflow_dispatch:
 
 permissions:
   contents: write

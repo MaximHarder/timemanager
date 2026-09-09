@@ -1,4 +1,6 @@
 version: 2
+# Automerge for patch/minor is handled by .github/workflows/dependabot-ci-automerge.yml
+# (majors stay manual). Enable "Allow auto-merge" in repo settings.
 updates:
   # npm Dependencies überwachen
   - package-ecosystem: 'npm'
